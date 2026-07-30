@@ -693,48 +693,68 @@ def upload_to_sftp(run_folder):
 
         sftp.chdir(sftp_folder)
 
+        all_files = os.listdir(run_folder)
+
+        # 1. PDF files
+        upload_files = [
+            f for f in all_files
+            if f.endswith(".pdf")
+        ]
+
+        # 2. Log files
+        upload_files.extend([
+            f for f in ["Log.txt", "Note.txt", "url.txt", "scriptlog.txt"]
+            if f in all_files
+        ])
+
+        # 3. Excel files
+        upload_files.extend([
+            f for f in all_files
+            if f.startswith("CA") and f.endswith(".xlsx")
+        ])
+
+        # 4. JSON files (if required)
+        upload_files.extend([
+            f for f in all_files
+            if f.endswith(".json")
+        ])
+        
         # Upload Required Files
-        for file_name in os.listdir(run_folder):
+        for file_name in upload_files:
 
-            if (
-                file_name.endswith(".pdf")
-                or file_name.endswith(".json")
-                or file_name in ["Log.txt", "Note.txt", "url.txt", "scriptlog.txt"]
-                or (file_name.startswith("CA") and file_name.endswith(".xlsx"))
-            ):
-                local_path = os.path.join(run_folder, file_name)
-                # Default remote name
-                remote_file_name = file_name
+            local_path = os.path.join(run_folder, file_name)
+            # Default remote name
+            remote_file_name = file_name
 
-                # If this is the CA Excel file → rename it
-                if file_name.startswith("CA") and file_name.endswith(".xlsx"):
-                    remote_file_name = f"CA{target_date}_{sftp_folder}.xlsx"
+            # If this is the CA Excel file → rename it
+            if file_name.startswith("CA") and file_name.endswith(".xlsx"):
+                remote_file_name = f"CA{target_date}_{sftp_folder}.xlsx"
 
-                if detect_weekend == 6:  # Sunday
-                    logger_man.log("Sunday detected. SFTP upload stopped.", Logger.INFO)
+            if detect_weekend == 6:  # Sunday
+                logger_man.log("Sunday detected. SFTP upload stopped.", Logger.INFO)
+                # sys.exit()
+
+            elif detect_weekend == 5:  # Saturday
+                if sftp_folder in ["10", "11"]:
+                    logger_man.log("Saturday allowed run (10/11). Starting SFTP upload...", Logger.INFO)
+                    sftp.put(local_path, remote_file_name)
+                    logger_man.log("File uploaded successfully.", Logger.SUCCESS)
+                else:
+                    logger_man.log(f"Saturday run {sftp_folder} blocked. Only 10 and 11 allowed.", Logger.INFO)
                     # sys.exit()
 
-                elif detect_weekend == 5:  # Saturday
-                    if sftp_folder in ["10", "11"]:
-                        logger_man.log("Saturday allowed run (10/11). Starting SFTP upload...", Logger.INFO)
-                        sftp.put(local_path, remote_file_name)
-                        logger_man.log("File uploaded successfully.", Logger.SUCCESS)
-                    else:
-                        logger_man.log(f"Saturday run {sftp_folder} blocked. Only 10 and 11 allowed.", Logger.INFO)
-                        # sys.exit()
-
-                elif detect_weekend == 0:  # Monday
-                    if sftp_folder in ["10", "11"]:
-                        logger_man.log("Monday not allowed run (10/11). Starting SFTP upload...", Logger.INFO)
-                    else:
-                        sftp.put(local_path, remote_file_name)
-                        logger_man.log("Monday File uploaded successfully.", Logger.SUCCESS)
-                        
+            elif detect_weekend == 0:  # Monday
+                if sftp_folder in ["10", "11"]:
+                    logger_man.log("Monday not allowed run (10/11). Starting SFTP upload...", Logger.INFO)
                 else:
-                    # Tuesday – Friday
-                    logger_man.log("Weekday detected. Starting SFTP upload...", Logger.SUCCESS)
                     sftp.put(local_path, remote_file_name)
-                    logger_man.log("File uploaded successfully [In ELSE].", Logger.SUCCESS)
+                    logger_man.log("Monday File uploaded successfully.", Logger.SUCCESS)
+                    
+            else:
+                # Tuesday – Friday
+                logger_man.log("Weekday detected. Starting SFTP upload...", Logger.SUCCESS)
+                sftp.put(local_path, remote_file_name)
+                logger_man.log("File uploaded successfully [In ELSE].", Logger.SUCCESS)
 
         sftp.close()
         transport.close()
