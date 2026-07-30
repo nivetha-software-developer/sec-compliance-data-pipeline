@@ -1,0 +1,11 @@
+selenium
+webdriver-manager
+pandas
+openpyxl
+pdfkit
+pypdf
+PyPDF2
+requests
+paramiko
+postmarker
+python-dotenv
