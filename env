@@ -1,0 +1,5 @@
+SFTP_HOST=host_name
+SFTP_USER=user_name
+SFTP_PASS=password
+SFTP_PORT=2022
+SFTP_BASE_PATH=/uploads/ca/
